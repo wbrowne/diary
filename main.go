@@ -23,6 +23,7 @@ const (
 	user     = "postgres"
 	password = "" // not required for 'postgres' admin user
 	dbname   = "diary"
+	enableDB = false
 )
 
 type Entry struct {
@@ -34,15 +35,16 @@ type Entry struct {
 }
 
 func main() {
-	db, err := openDbConnection()
-	defer db.Close()
+	if enableDB {
+		db, err := openDbConnection()
+		defer db.Close()
 
-	err = db.Ping()
-	if err != nil {
-		panic(err)
+		err = db.Ping()
+		if err != nil {
+			panic(err)
+		}
+		fmt.Println("Successfully connected to Postgres")
 	}
-	fmt.Println("Successfully connected to Postgres")
-
 	setupServer()
 }
 
