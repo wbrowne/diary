@@ -23,7 +23,7 @@ const (
 	user     = "postgres"
 	password = "" // not required for 'postgres' admin user
 	dbname   = "diary"
-	enableDB = false
+	enableDB = false // TODO enable and migrate static entries
 )
 
 type Entry struct {
@@ -62,31 +62,29 @@ func openDbConnection() (*sql.DB, error) {
 
 func setupServer() {
 	r := mux.NewRouter()
-	r.HandleFunc("/entries", listEntries).Methods("GET", "OPTIONS")
-	r.HandleFunc("/entries", createEntry).Methods("POST", "OPTIONS")
-	r.HandleFunc("/entries/{id}", getEntry).Methods("GET", "OPTIONS")
+	r.HandleFunc("/entries", addDefaultHeaders(listEntries)).Methods("GET", "OPTIONS")
+	r.HandleFunc("/entries", addDefaultHeaders(createEntry)).Methods("POST", "OPTIONS")
+	r.HandleFunc("/entries/{id}", addDefaultHeaders(getEntry)).Methods("GET", "OPTIONS")
 
 	fmt.Println("Starting webserver @ 8080...")
 	http.ListenAndServe(":8080", r)
 }
 
+func addDefaultHeaders(fn http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		w.Header().Set("Content-Type", "application/json")
+		fn(w, r)
+	}
+}
+
 func listEntries(w http.ResponseWriter, r *http.Request) {
-	// CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	w.Header().Set("Content-Type", "application/json")
-
 	json.NewEncoder(w).Encode(entries)
 }
 
 func getEntry(w http.ResponseWriter, r *http.Request) {
-	// CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-
-	w.Header().Set("Content-Type", "application/json")
-
 	params := mux.Vars(r)
 	requestedId, err := strconv.ParseInt(params["id"], 10, 64)
 
@@ -106,14 +104,9 @@ func getEntry(w http.ResponseWriter, r *http.Request) {
 }
 
 func createEntry(w http.ResponseWriter, r *http.Request) {
-	// CORS
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-	w.Header().Set("Content-Type", "application/json")
-
 	var entry Entry
 	json.NewDecoder(r.Body).Decode(&entry)
+
 	entry.ID = rand.Int63n(1000)
 	entry.Created = time.Now()
 	entries = append(entries, entry)
